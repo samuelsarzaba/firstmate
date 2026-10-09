@@ -944,6 +944,32 @@ SH
   pass "bootstrap: FM_BOOTSTRAP_NETWORK partitions one run into local and network halves"
 }
 
+# A home whose forge is not GitHub opts out with config/github containing
+# `off`: gh and gh-axi are not required and gh auth is never probed. Without
+# that file the same toolchain still reports all three.
+test_github_off_skips_github_diagnostics() {
+  local case_dir fakebin base out
+  case_dir="$TMP_ROOT/github-off"
+  mkdir -p "$case_dir/home/config"
+  printf '%s\n' manual > "$case_dir/home/config/backlog-backend"
+  fakebin=$(make_fake_toolchain "$case_dir")
+  rm -f "$fakebin/gh" "$fakebin/gh-axi"
+  base=$(fm_test_base_path_sans "$BASE_PATH" gh gh-axi)
+
+  out=$(PATH="$fakebin:$base" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
+    FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
+  assert_contains "$out" "MISSING: gh (install:" "a GitHub home lost its gh diagnostic"
+  assert_contains "$out" "MISSING: gh-axi (install:" "a GitHub home lost its gh-axi diagnostic"
+  assert_contains "$out" "NEEDS_GH_AUTH" "a GitHub home lost its gh auth probe"
+
+  printf '%s\n' off > "$case_dir/home/config/github"
+  out=$(PATH="$fakebin:$base" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
+    FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
+  assert_not_contains "$out" "MISSING: gh" "config/github=off still required gh or gh-axi"
+  assert_not_contains "$out" "NEEDS_GH_AUTH" "config/github=off still probed gh auth"
+  pass "bootstrap: config/github=off drops gh, gh-axi and gh auth diagnostics"
+}
+
 test_network_sweeps_recheck_lock_ownership() {
   local case_dir fakebin fake_root marker out
   case_dir="$TMP_ROOT/network-lock-handoff"
@@ -1267,6 +1293,7 @@ test_fleet_sync_timeout_is_computed_before_launch
 test_routine_bootstrap_confirmations_are_silent
 test_routine_bootstrap_contract_runs_under_system_bash
 test_network_phase_partitions_the_run
+test_github_off_skips_github_diagnostics
 test_network_sweeps_recheck_lock_ownership
 test_network_phases_record_per_step_elapsed_times
 test_tasks_axi_verdict_handoff_is_consumed_once

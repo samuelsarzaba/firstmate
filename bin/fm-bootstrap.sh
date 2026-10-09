@@ -832,6 +832,13 @@ missing_tool_diagnostic() {
 # never told tmux is missing, and only orca drops treehouse. A backend value with
 # no verified dependency set is reported before the universal checks continue.
 COMMON_TOOLS="node git gh no-mistakes gh-axi chrome-devtools-axi tasks-axi quota-axi"
+# A home whose forge is not GitHub (local config/github containing `off`) is
+# never told gh or gh-axi is missing, nor asked to authenticate gh.
+GITHUB_ENABLED=1
+if [ "$(sed -n '1p' "$CONFIG/github" 2>/dev/null)" = off ]; then
+  GITHUB_ENABLED=0
+  COMMON_TOOLS="node git no-mistakes chrome-devtools-axi tasks-axi quota-axi"
+fi
 BACKEND=$(fm_backend_name)
 BACKEND_VALID=1
 if ! BACKEND_TOOLS=$(fm_backend_required_tools "$BACKEND"); then
@@ -1424,7 +1431,7 @@ detect_local_tools() {
   if command -v no-mistakes >/dev/null 2>&1 && ! tool_version_at_least no-mistakes "$NO_MISTAKES_MIN"; then
     echo "MISSING: no-mistakes (install: $(install_cmd no-mistakes))"
   fi
-  if command -v gh-axi >/dev/null 2>&1 && ! tool_version_at_least gh-axi "$GH_AXI_MIN"; then
+  if [ "$GITHUB_ENABLED" = 1 ] && command -v gh-axi >/dev/null 2>&1 && ! tool_version_at_least gh-axi "$GH_AXI_MIN"; then
     echo "MISSING: gh-axi (install: $(install_cmd gh-axi))"
   fi
   if ! tool_version_at_least lavish-axi "$LAVISH_AXI_BOARD_MIN"; then
@@ -1556,7 +1563,7 @@ detect_home_summary_publication() {
 # fleet_sync and others assign plain names like `start` without `local`, and
 # bash's dynamic scoping would let them overwrite a stamp held by a caller.
 local_phase && detect_local_tools
-if network_phase; then
+if network_phase && [ "$GITHUB_ENABLED" = 1 ]; then
   __fm_timing_stamp=$(fm_timing_now_ms)
   gh auth status >/dev/null 2>&1 || echo "NEEDS_GH_AUTH"
   fm_timing_record phase gh-auth "$__fm_timing_stamp"
