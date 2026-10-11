@@ -1329,7 +1329,7 @@ Every home requires:
 
 - node and git.
 - gh, with GitHub authentication through `gh auth login`, unless `config/github` is `off`.
-- no-mistakes v1.46.0 or newer.
+- no-mistakes v1.46.0 or newer, unless `config/github` is `off`.
 - Compatible gh-axi, unless `config/github` is `off`.
 - chrome-devtools-axi.
 - Compatible tasks-axi, as specified in "Backlog backend" above.
@@ -1339,10 +1339,11 @@ Every home requires:
 This section is the single owner of that universal toolchain list; backend guides' prerequisites point here and add only their backend-specific tools.
 
 A home whose projects live on a forge other than GitHub, such as GitLab reached through `glab`, can put `off` on the first line of local, gitignored `config/github`.
-That home is then never told gh or gh-axi is missing and never asked to run `gh auth login`.
+That home is then never told gh, gh-axi or no-mistakes is missing and never asked to run `gh auth login`.
 
 In that list, no-mistakes runs the validation pipeline, gh-axi and chrome-devtools-axi cover GitHub and browser operations, and tasks-axi plus quota-axi back backlog mutations and quota-aware array dispatch.
 Lavish is a presentation-only dependency for visual decisions and reports; nonvisual work can proceed with plain text when it is unavailable.
+A home that will never install Lavish can put `off` on the first line of local, gitignored `config/lavish`; it is then never told lavish-axi is unavailable.
 
 **Backend requirements**
 

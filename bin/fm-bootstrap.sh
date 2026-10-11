@@ -833,12 +833,16 @@ missing_tool_diagnostic() {
 # no verified dependency set is reported before the universal checks continue.
 COMMON_TOOLS="node git gh no-mistakes gh-axi chrome-devtools-axi tasks-axi quota-axi"
 # A home whose forge is not GitHub (local config/github containing `off`) is
-# never told gh or gh-axi is missing, nor asked to authenticate gh.
+# never told gh, gh-axi or no-mistakes is missing, nor asked to authenticate gh.
 GITHUB_ENABLED=1
 if [ "$(sed -n '1p' "$CONFIG/github" 2>/dev/null)" = off ]; then
   GITHUB_ENABLED=0
-  COMMON_TOOLS="node git no-mistakes chrome-devtools-axi tasks-axi quota-axi"
+  COMMON_TOOLS="node git chrome-devtools-axi tasks-axi quota-axi"
 fi
+# A home without Lavish (local config/lavish containing `off`) is never told
+# lavish-axi is unavailable; decisions and reports stay plain text.
+LAVISH_ENABLED=1
+[ "$(sed -n '1p' "$CONFIG/lavish" 2>/dev/null)" = off ] && LAVISH_ENABLED=0
 BACKEND=$(fm_backend_name)
 BACKEND_VALID=1
 if ! BACKEND_TOOLS=$(fm_backend_required_tools "$BACKEND"); then
@@ -1428,13 +1432,15 @@ detect_local_tools() {
     && command -v treehouse >/dev/null 2>&1 && ! treehouse_supports_lease; then
     echo "MISSING: treehouse (install: $(install_cmd treehouse))"
   fi
-  if command -v no-mistakes >/dev/null 2>&1 && ! tool_version_at_least no-mistakes "$NO_MISTAKES_MIN"; then
+  if [ "$GITHUB_ENABLED" = 1 ] && command -v no-mistakes >/dev/null 2>&1 && ! tool_version_at_least no-mistakes "$NO_MISTAKES_MIN"; then
     echo "MISSING: no-mistakes (install: $(install_cmd no-mistakes))"
   fi
   if [ "$GITHUB_ENABLED" = 1 ] && command -v gh-axi >/dev/null 2>&1 && ! tool_version_at_least gh-axi "$GH_AXI_MIN"; then
     echo "MISSING: gh-axi (install: $(install_cmd gh-axi))"
   fi
-  if ! tool_version_at_least lavish-axi "$LAVISH_AXI_BOARD_MIN"; then
+  if [ "$LAVISH_ENABLED" = 0 ]; then
+    :
+  elif ! tool_version_at_least lavish-axi "$LAVISH_AXI_BOARD_MIN"; then
     echo "PRESENTATION_UNAVAILABLE: lavish-axi (requires >=$LAVISH_AXI_BOARD_MIN; install: $(install_cmd lavish-axi)) - nonvisual work may proceed with plain-text decisions and reports; install or upgrade before using Lavish"
   elif ! tool_version_at_least lavish-axi "$LAVISH_AXI_MIN"; then
     echo "BOOTSTRAP_INFO: lavish-axi >=$LAVISH_AXI_MIN enables confirmed board replies; this older compatible version retains the legacy reply path, but upgrade to prevent handing back a board before its reply is accepted"

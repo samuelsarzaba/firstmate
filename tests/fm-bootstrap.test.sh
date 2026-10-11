@@ -945,29 +945,53 @@ SH
 }
 
 # A home whose forge is not GitHub opts out with config/github containing
-# `off`: gh and gh-axi are not required and gh auth is never probed. Without
-# that file the same toolchain still reports all three.
+# `off`: gh, gh-axi and no-mistakes are not required and gh auth is never
+# probed. Without that file the same toolchain still reports all four.
 test_github_off_skips_github_diagnostics() {
   local case_dir fakebin base out
   case_dir="$TMP_ROOT/github-off"
   mkdir -p "$case_dir/home/config"
   printf '%s\n' manual > "$case_dir/home/config/backlog-backend"
   fakebin=$(make_fake_toolchain "$case_dir")
-  rm -f "$fakebin/gh" "$fakebin/gh-axi"
-  base=$(fm_test_base_path_sans "$BASE_PATH" gh gh-axi)
+  rm -f "$fakebin/gh" "$fakebin/gh-axi" "$fakebin/no-mistakes"
+  base=$(fm_test_base_path_sans "$BASE_PATH" gh gh-axi no-mistakes)
 
   out=$(PATH="$fakebin:$base" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
     FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
   assert_contains "$out" "MISSING: gh (install:" "a GitHub home lost its gh diagnostic"
   assert_contains "$out" "MISSING: gh-axi (install:" "a GitHub home lost its gh-axi diagnostic"
+  assert_contains "$out" "MISSING: no-mistakes (install:" "a GitHub home lost its no-mistakes diagnostic"
   assert_contains "$out" "NEEDS_GH_AUTH" "a GitHub home lost its gh auth probe"
 
   printf '%s\n' off > "$case_dir/home/config/github"
   out=$(PATH="$fakebin:$base" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
     FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
   assert_not_contains "$out" "MISSING: gh" "config/github=off still required gh or gh-axi"
+  assert_not_contains "$out" "MISSING: no-mistakes" "config/github=off still required no-mistakes"
   assert_not_contains "$out" "NEEDS_GH_AUTH" "config/github=off still probed gh auth"
-  pass "bootstrap: config/github=off drops gh, gh-axi and gh auth diagnostics"
+  pass "bootstrap: config/github=off drops gh, gh-axi, no-mistakes and gh auth diagnostics"
+}
+
+# A home without Lavish opts out with config/lavish containing `off`: a
+# missing lavish-axi is no longer reported. Without that file it still is.
+test_lavish_off_skips_presentation_diagnostic() {
+  local case_dir fakebin base out
+  case_dir="$TMP_ROOT/lavish-off"
+  mkdir -p "$case_dir/home/config"
+  printf '%s\n' manual > "$case_dir/home/config/backlog-backend"
+  fakebin=$(make_fake_toolchain "$case_dir")
+  rm -f "$fakebin/lavish-axi"
+  base=$(fm_test_base_path_sans "$BASE_PATH" lavish-axi)
+
+  out=$(PATH="$fakebin:$base" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
+    FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
+  assert_contains "$out" "PRESENTATION_UNAVAILABLE: lavish-axi" "a Lavish home lost its lavish-axi diagnostic"
+
+  printf '%s\n' off > "$case_dir/home/config/lavish"
+  out=$(PATH="$fakebin:$base" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
+    FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
+  assert_not_contains "$out" "lavish-axi" "config/lavish=off still reported lavish-axi"
+  pass "bootstrap: config/lavish=off drops the lavish-axi diagnostic"
 }
 
 test_network_sweeps_recheck_lock_ownership() {
@@ -1294,6 +1318,7 @@ test_routine_bootstrap_confirmations_are_silent
 test_routine_bootstrap_contract_runs_under_system_bash
 test_network_phase_partitions_the_run
 test_github_off_skips_github_diagnostics
+test_lavish_off_skips_presentation_diagnostic
 test_network_sweeps_recheck_lock_ownership
 test_network_phases_record_per_step_elapsed_times
 test_tasks_axi_verdict_handoff_is_consumed_once
