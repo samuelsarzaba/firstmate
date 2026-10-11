@@ -351,6 +351,32 @@ test_pr_based_dod_requires_non_draft() {
   pass "fm-brief.sh: PR-based done requires a non-draft PR; a deliberate draft declares a wait"
 }
 
+# A home whose forge is not GitHub (config/github containing `off`) gets the
+# direct-PR steps through glab merge requests; no gh-axi step reaches its worker.
+test_github_off_direct_pr_dod_uses_glab() {
+  local home id brief
+  home="$TMP_ROOT/github-off-dod-home"
+  mkdir -p "$home/data" "$home/config"
+  printf '%s\n' off > "$home/config/github"
+  id="brief-github-off-d1"
+  FM_HOME="$home" "$ROOT/bin/fm-brief.sh" "$id" some-proj --mode direct-PR --base-branch release >/dev/null 2>&1
+  brief="$home/data/$id/brief.md"
+  assert_present "$brief" "github-off direct-PR brief was not scaffolded"
+  # shellcheck disable=SC2016  # single quotes are deliberate: the backticks must stay literal
+  assert_grep 'open a GitLab merge request with `glab mr create --fill --yes`' "$brief" \
+    "github-off direct-PR brief must open the merge request with glab"
+  # shellcheck disable=SC2016  # single quotes are deliberate: the backticks must stay literal
+  assert_grep '(`--target-branch release`)' "$brief" \
+    "github-off direct-PR brief must name glab's base-branch flag"
+  # shellcheck disable=SC2016  # single quotes are deliberate: the backticks must stay literal
+  assert_grep 'mark it ready with `glab mr update <number> --ready`' "$brief" \
+    "github-off direct-PR brief must mark a draft ready with glab"
+  assert_grep "Use glab for GitLab operations" "$brief" \
+    "github-off brief rule 3 must name glab"
+  assert_no_grep "gh-axi" "$brief" "github-off direct-PR brief still names gh-axi"
+  pass "fm-brief.sh: config/github=off renders direct-PR steps through glab"
+}
+
 # Pin the specific line the bug lived on: the no-mistakes DOD's no-mistakes
 # reference must render as plain prose with no dangling apostrophe artifact.
 test_no_mistakes_dod_wording() {
@@ -1476,6 +1502,7 @@ test_faster_paths_use_configured_authority_without_stacked_review
 test_no_mistakes_dod_wording
 test_no_mistakes_dod_green_detection
 test_pr_based_dod_requires_non_draft
+test_github_off_direct_pr_dod_uses_glab
 test_ask_user_escalation_format
 test_ship_project_memory_wording
 test_herdr_lab_contract_is_explicit_and_complete

@@ -1340,6 +1340,7 @@ This section is the single owner of that universal toolchain list; backend guide
 
 A home whose projects live on a forge other than GitHub, such as GitLab reached through `glab`, can put `off` on the first line of local, gitignored `config/github`.
 That home is then never told gh, gh-axi or no-mistakes is missing and never asked to run `gh auth login`.
+Its direct-PR crewmates open and check GitLab merge requests with `glab` instead of GitHub pull requests with gh-axi.
 
 In that list, no-mistakes runs the validation pipeline, gh-axi and chrome-devtools-axi cover GitHub and browser operations, and tasks-axi plus quota-axi back backlog mutations and quota-aware array dispatch.
 Lavish is a presentation-only dependency for visual decisions and reports; nonvisual work can proceed with plain text when it is unavailable.

@@ -400,14 +400,26 @@ There is no pull request, no \`gh-axi\` call, and no forge CI result to report: 
 EOF
 }
 
+# A home whose forge is not GitHub (local config/github containing `off`, the
+# switch bin/fm-bootstrap.sh reads) gets glab merge request steps in place of
+# gh-axi pull request steps.
+# ponytail: any non-GitHub forge is treated as GitLab; a per-project forge=gitlab
+# binding beside forge=gerrit is the upgrade path if another forge appears.
+fm_dod_github_off() {
+  local cfg=${CONFIG:-${FM_CONFIG_OVERRIDE:-${FM_HOME:-}/config}}
+  [ "$(sed -n '1p' "$cfg/github" 2>/dev/null)" = off ]
+}
+
 fm_dod_block() {  # <mode> <task-id> [branch] [<forge>] [<base>]
   local mode=$1 id=$2 forge=${4:-none} base=${5:-}
-  local branch=${3:-fm/$id} pr_base='' nm_base='' base_q
+  local branch=${3:-fm/$id} pr_base='' nm_base='' base_q base_flag=--base
+  local pr_open pr_ready
   fm_forge_valid_for_mode "$forge" "$mode" fm_dod_block || return 1
   fm_base_branch_valid "$base" "$mode" "$forge" fm_dod_block || return 1
+  fm_dod_github_off && base_flag=--target-branch
   if [ -n "$base" ]; then
     printf -v base_q '%q' "$base"
-    pr_base=", against the base branch \`$base\` (\`--base $base_q\`), not the repository default"
+    pr_base=", against the base branch \`$base\` (\`$base_flag $base_q\`), not the repository default"
     nm_base="This task's base branch is \`$base\`, not the repository default: pass \`--base-branch $base_q\` on every \`no-mistakes axi run\` that starts a run, so the pipeline rebases onto, opens its PR against, and watches CI for that branch.
 "
   fi
@@ -460,14 +472,21 @@ EOF
       fm_gerrit_publish_block
       ;;
     direct-PR:*)
+      if fm_dod_github_off; then
+        pr_open="When it is implemented and committed, push your branch and open a GitLab merge request with \`glab mr create --fill --yes\` that is ready for review, not a draft$pr_base."
+        pr_ready="Before you report done, read the merge request back from the forge and confirm it is not a draft (\`glab mr view <number> -F json\` must show \`\"draft\": false\`, where <number> is the number at the end of your merge request URL); if it is a draft, mark it ready with \`glab mr update <number> --ready\`."
+      else
+        pr_open="When it is implemented and committed, push your branch and open a PR with \`gh-axi\` that is ready for review, not a draft$pr_base."
+        pr_ready="Before you report done, read the PR back from the forge and confirm it is not a draft (\`gh-axi pr view <number>\` must print \`draft: no\`, where <number> is the PR number from your PR URL); if it is a draft, mark it ready with \`gh-axi pr ready <number>\`."
+      fi
       cat <<EOF
 # Definition of done
 Delivery contract: mode=direct-PR
 Ship branch: $branch
 This task ships **direct-PR**: you raise the PR yourself, without the no-mistakes pipeline.
 The task is complete only when committed on your branch.
-When it is implemented and committed, push your branch and open a PR with \`gh-axi\` that is ready for review, not a draft$pr_base.
-Before you report done, read the PR back from the forge and confirm it is not a draft (\`gh-axi pr view <number>\` must print \`draft: no\`, where <number> is the PR number from your PR URL); if it is a draft, mark it ready with \`gh-axi pr ready <number>\`.
+$pr_open
+$pr_ready
 A draft cannot be merged, so a done report on one leaves the merge unasked.
 Then append \`done [at=<epoch>]: PR {url}\` to the status file and stop.
 That \`done:\` is accepted only when this copy's HEAD - your latest commit - is pushed to your PR branch; the check tests that commit, not merely that a branch moved.
